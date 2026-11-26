@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --background: #262624;
+  --foreground: #ececec;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-surface: #111114;
-  --color-surface-2: #18181d;
-  --color-line: #27272f;
-  --color-muted: #a1a1aa;
-  --color-accent: #7c5cff;
-  --color-accent-hover: #6b49f5;
+  --color-surface: #2f2e2c;
+  --color-surface-2: #3a3937;
+  --color-line: #43423f;
+  --color-muted: #9b9a95;
+  --color-accent: #d97757;
+  --color-accent-hover: #c6694a;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -24,30 +24,29 @@ html {
 
 body {
   background-color: var(--background);
-  background-image: radial-gradient(
-    60rem 30rem at 50% -10%,
-    rgba(124, 92, 255, 0.18),
-    transparent 70%
-  );
-  background-repeat: no-repeat;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+h1 {
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-weight: 500;
+}
+
 @layer components {
   .card {
-    @apply rounded-xl border border-line bg-surface p-5;
+    @apply rounded-2xl border border-line bg-surface p-5;
   }
 
   .input {
-    @apply w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-foreground placeholder:text-muted outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30;
+    @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-foreground placeholder:text-muted outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-foreground transition hover:bg-line;
+    @apply inline-flex items-center justify-center rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-foreground transition hover:bg-line;
   }
 }

@@ -50,10 +50,11 @@ export default async function MenuPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Main menu</h1>
-        <p className="mt-1 text-sm text-muted">Signed in as {user.email}</p>
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12">
+      <div className="mb-10 text-center">
+        <p className="text-3xl text-accent">✦</p>
+        <h1 className="mt-3 text-3xl sm:text-4xl">Welcome back</h1>
+        <p className="mt-2 text-sm text-muted">{user.email}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
