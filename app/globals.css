@@ -33,6 +33,25 @@ h1 {
   font-weight: 500;
 }
 
+@keyframes pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pop-in {
+  animation: pop 0.35s ease-out both;
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border border-line bg-surface p-5;

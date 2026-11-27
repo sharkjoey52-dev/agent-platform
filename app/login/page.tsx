@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +12,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "oauth") {
+      setMessage("Sign in did not finish. Please try again.");
+    }
+  }, []);
+
+  async function githubSignIn() {
+    setMessage("");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) setMessage(error.message);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,12 +68,9 @@ export default function LoginPage() {
         AgentHub
       </Link>
 
-      <form
-        onSubmit={handleSubmit}
-        className="card flex w-full max-w-sm flex-col gap-4"
-      >
+      <div className="card flex w-full max-w-sm flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl">
             {mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -66,32 +80,44 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="input"
-        />
-
-        <input
-          type="password"
-          placeholder="Password (min 6 characters)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-          className="input"
-        />
-
-        <button type="submit" disabled={loading} className="btn-primary">
-          {loading
-            ? "Please wait..."
-            : mode === "signin"
-            ? "Sign in"
-            : "Sign up"}
+        <button type="button" onClick={githubSignIn} className="btn-ghost w-full">
+          Continue with GitHub
         </button>
+
+        <div className="flex items-center gap-3 text-xs text-muted">
+          <span className="h-px flex-1 bg-line" />
+          or use email
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="input"
+          />
+
+          <input
+            type="password"
+            placeholder="Password (min 6 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            className="input"
+          />
+
+          <button type="submit" disabled={loading} className="btn-primary">
+            {loading
+              ? "Please wait..."
+              : mode === "signin"
+              ? "Sign in"
+              : "Sign up"}
+          </button>
+        </form>
 
         {message && <p className="text-sm text-yellow-400">{message}</p>}
 
@@ -107,7 +133,7 @@ export default function LoginPage() {
             ? "No account? Create one"
             : "Already have an account? Sign in"}
         </button>
-      </form>
+      </div>
     </main>
   );
 }

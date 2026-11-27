@@ -4,8 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import AgentAvatar, { normColor, normStyle } from "@/components/AgentAvatar";
+import MessageContent from "@/components/MessageContent";
 
-type Agent = { id: string; name: string; model: string | null };
+type Agent = {
+  id: string;
+  name: string;
+  model: string | null;
+  avatar_style: string | null;
+  avatar_color: string | null;
+};
 type Convo = { id: string; title: string | null };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -26,6 +34,8 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const agent = agents.find((a) => a.id === agentId);
+  const agentStyle = normStyle(agent?.avatar_style);
+  const agentColor = normColor(agent?.avatar_color);
 
   const loadConvos = useCallback(async (id: string) => {
     const supabase = createClient();
@@ -47,7 +57,7 @@ export default function ChatPage() {
       }
       const res = await supabase
         .from("agents")
-        .select("id, name, model")
+        .select("id, name, model, avatar_style, avatar_color")
         .order("created_at", { ascending: false });
       if (res.data) {
         setAgents(res.data);
@@ -242,9 +252,11 @@ export default function ChatPage() {
                           : "text-[#c2c0b6] hover:bg-white/5"
                       }`}
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#3a3937] text-xs font-semibold">
-                        {a.name.slice(0, 1).toUpperCase()}
-                      </span>
+                      <AgentAvatar
+                        style={normStyle(a.avatar_style)}
+                        color={normColor(a.avatar_color)}
+                        size={28}
+                      />
                       <span className="truncate">{a.name}</span>
                     </button>
                   </li>
@@ -330,9 +342,12 @@ export default function ChatPage() {
             ☰
           </button>
           {agent && (
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{agent.name}</p>
-              <p className="truncate text-xs text-[#9b9a95]">{agent.model}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <AgentAvatar style={agentStyle} color={agentColor} size={34} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{agent.name}</p>
+                <p className="truncate text-xs text-[#9b9a95]">{agent.model}</p>
+              </div>
             </div>
           )}
         </header>
@@ -357,9 +372,11 @@ export default function ChatPage() {
                 Loading chat...
               </p>
             ) : messages.length === 0 ? (
-              <div className="mt-24 text-center">
-                <p className="text-3xl text-[#d97757]">✦</p>
-                <p className="mt-3 font-serif text-3xl sm:text-4xl">
+              <div className="mt-20 flex flex-col items-center text-center">
+                <div key={agentId} className="pop-in">
+                  <AgentAvatar style={agentStyle} color={agentColor} size={88} />
+                </div>
+                <p className="mt-4 font-serif text-3xl sm:text-4xl">
                   How can {agent?.name ?? "I"} help you today?
                 </p>
               </div>
@@ -373,9 +390,15 @@ export default function ChatPage() {
                   </div>
                 ) : (
                   <div key={i} className="flex gap-3">
-                    <span className="mt-1 text-lg text-[#d97757]">✦</span>
-                    <div className="min-w-0 flex-1 whitespace-pre-wrap font-serif text-[16px] leading-7">
-                      {m.content}
+                    <div className="pop-in mt-0.5">
+                      <AgentAvatar
+                        style={agentStyle}
+                        color={agentColor}
+                        size={34}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 font-serif text-[16px] leading-7">
+                      <MessageContent content={m.content} />
                     </div>
                   </div>
                 )
@@ -384,7 +407,14 @@ export default function ChatPage() {
 
             {sending && (
               <div className="flex items-center gap-3">
-                <span className="animate-pulse text-lg text-[#d97757]">✦</span>
+                <div className="pop-in">
+                  <AgentAvatar
+                    style={agentStyle}
+                    color={agentColor}
+                    size={46}
+                    thinking
+                  />
+                </div>
                 <span className="text-sm text-[#9b9a95]">Thinking...</span>
               </div>
             )}

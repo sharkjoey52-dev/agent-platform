@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import AgentAvatar, {
+  AVATAR_COLORS,
+  AVATAR_STYLES,
+  normColor,
+  normStyle,
+  type AvatarColor,
+  type AvatarStyle,
+} from "@/components/AgentAvatar";
 
 type SavedKey = {
   id: string;
@@ -23,9 +31,60 @@ type Agent = {
   system_prompt: string;
   api_key_id: string | null;
   skill_ids: string[];
+  avatar_style: string | null;
+  avatar_color: string | null;
 };
 
 const OTHER = "__other__";
+
+function AvatarPicker({
+  style,
+  color,
+  onChange,
+}: {
+  style: AvatarStyle;
+  color: AvatarColor;
+  onChange: (style: AvatarStyle, color: AvatarColor) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        {AVATAR_STYLES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onChange(s.id, color)}
+            className={`flex flex-col items-center gap-1 rounded-xl border px-3 py-2 text-xs transition ${
+              s.id === style
+                ? "border-accent bg-accent/15"
+                : "border-line bg-surface-2 hover:border-accent"
+            }`}
+          >
+            <AgentAvatar style={s.id} color={color} size={36} />
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {AVATAR_COLORS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onChange(style, c.id)}
+            aria-label={c.label}
+            title={c.label}
+            className={`h-8 w-8 rounded-full border-2 transition ${
+              c.id === color ? "border-white" : "border-transparent"
+            }`}
+            style={{ backgroundColor: c.hex }}
+          />
+        ))}
+        <span className="ml-1 text-xs text-muted">Thinking face:</span>
+        <AgentAvatar style={style} color={color} size={36} thinking />
+      </div>
+    </div>
+  );
+}
 
 export default function AgentsPage() {
   const router = useRouter();
@@ -44,6 +103,9 @@ export default function AgentsPage() {
   const [modelChoice, setModelChoice] = useState("");
   const [customModel, setCustomModel] = useState("");
   const [newSkillIds, setNewSkillIds] = useState<string[]>([]);
+  const [newStyle, setNewStyle] = useState<AvatarStyle>("bot");
+  const [newColor, setNewColor] = useState<AvatarColor>("orange");
+  const [editingLookId, setEditingLookId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -78,7 +140,9 @@ export default function AgentsPage() {
 
     const agentsRes = await supabase
       .from("agents")
-      .select("id, name, model, system_prompt, api_key_id, skill_ids")
+      .select(
+        "id, name, model, system_prompt, api_key_id, skill_ids, avatar_style, avatar_color"
+      )
       .order("created_at", { ascending: false });
     if (agentsRes.data) setAgents(agentsRes.data);
   }, []);
@@ -160,6 +224,8 @@ export default function AgentsPage() {
       model: effectiveModel,
       api_key_id: keyId || null,
       skill_ids: newSkillIds,
+      avatar_style: newStyle,
+      avatar_color: newColor,
     });
 
     if (error) {
@@ -173,12 +239,37 @@ export default function AgentsPage() {
     setSaving(false);
   }
 
+  async function changeLook(
+    agent: Agent,
+    style: AvatarStyle,
+    color: AvatarColor
+  ) {
+    // Update the screen straight away, then save
+    setAgents((current) =>
+      current.map((a) =>
+        a.id === agent.id
+          ? { ...a, avatar_style: style, avatar_color: color }
+          : a
+      )
+    );
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("agents")
+      .update({ avatar_style: style, avatar_color: color })
+      .eq("id", agent.id);
+
+    if (error) {
+      setMessage(error.message);
+      load();
+    }
+  }
+
   async function toggleAgentSkill(agent: Agent, skillId: string) {
     const next = agent.skill_ids.includes(skillId)
       ? agent.skill_ids.filter((s) => s !== skillId)
       : [...agent.skill_ids, skillId];
 
-    // Update the screen straight away, then save
     setAgents((current) =>
       current.map((a) => (a.id === agent.id ? { ...a, skill_ids: next } : a))
     );
@@ -218,9 +309,10 @@ export default function AgentsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Agents</h1>
+        <h1 className="text-3xl tracking-tight">Agents</h1>
         <p className="mt-1 text-sm text-muted">
-          Pick a key, a model and some skills, then chat with your agent.
+          Pick a key, a model, a look and some skills, then chat with your
+          agent.
         </p>
       </div>
 
@@ -229,7 +321,7 @@ export default function AgentsPage() {
 
         {keys.length === 0 ? (
           <p className="text-sm text-yellow-400">
-            You need to save an API key first (under Keys).
+            You need to save an API key first (under API keys).
           </p>
         ) : (
           <form onSubmit={createAgent} className="flex flex-col gap-3">
@@ -241,6 +333,18 @@ export default function AgentsPage() {
               required
               className="input"
             />
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs text-muted">Look</span>
+              <AvatarPicker
+                style={newStyle}
+                color={newColor}
+                onChange={(s, c) => {
+                  setNewStyle(s);
+                  setNewColor(c);
+                }}
+              />
+            </div>
 
             <select
               value={keyId}
@@ -370,40 +474,67 @@ export default function AgentsPage() {
           <p className="text-sm text-muted">No agents yet.</p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {agents.map((a) => (
-              <li
-                key={a.id}
-                className="flex flex-col gap-3 rounded-lg border border-line bg-surface-2 px-3 py-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium">{a.name}</p>
-                    <p className="truncate text-sm text-muted">{a.model}</p>
-                  </div>
-                  <button
-                    onClick={() => deleteAgent(a.id)}
-                    className="shrink-0 text-sm text-red-400 hover:text-red-300"
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                {skills.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((s) => (
+            {agents.map((a) => {
+              const style = normStyle(a.avatar_style);
+              const color = normColor(a.avatar_color);
+              return (
+                <li
+                  key={a.id}
+                  className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 px-3 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <AgentAvatar style={style} color={color} size={44} />
+                      <div className="min-w-0">
+                        <p className="font-medium">{a.name}</p>
+                        <p className="truncate text-sm text-muted">
+                          {a.model}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
                       <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => toggleAgentSkill(a, s.id)}
-                        className={chipClass(a.skill_ids.includes(s.id))}
+                        onClick={() =>
+                          setEditingLookId(editingLookId === a.id ? null : a.id)
+                        }
+                        className="text-sm text-muted hover:text-foreground"
                       >
-                        {s.name}
+                        Look
                       </button>
-                    ))}
+                      <button
+                        onClick={() => deleteAgent(a.id)}
+                        className="text-sm text-red-400 hover:text-red-300"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                )}
-              </li>
-            ))}
+
+                  {editingLookId === a.id && (
+                    <AvatarPicker
+                      style={style}
+                      color={color}
+                      onChange={(s, c) => changeLook(a, s, c)}
+                    />
+                  )}
+
+                  {skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {skills.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => toggleAgentSkill(a, s.id)}
+                          className={chipClass(a.skill_ids.includes(s.id))}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
