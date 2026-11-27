@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/crypto";
-import { chatUrl } from "@/lib/providers";
+import { authHeaders, chatUrl, providerFormat } from "@/lib/providers";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -46,7 +46,8 @@ export async function POST(request: Request) {
   }
 
   const endpoint = chatUrl(agent.provider);
-  if (!endpoint) {
+  const format = providerFormat(agent.provider);
+  if (!endpoint || !format) {
     return NextResponse.json(
       { error: `${agent.provider} is not supported yet` },
       { status: 400 }
@@ -132,23 +133,32 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: true })
     .limit(30);
 
-  // 7. Call the model
+  const turns = history ?? [];
+
+  // 7. Call the model (the request shape depends on the provider)
+  const payload =
+    format === "anthropic"
+      ? {
+          model: agent.model,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: turns,
+        }
+      : {
+          model: agent.model,
+          max_tokens: 1024,
+          messages: [{ role: "system", content: systemPrompt }, ...turns],
+        };
+
   let reply: string;
   try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        ...authHeaders(agent.provider, apiKey),
       },
-      body: JSON.stringify({
-        model: agent.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...(history ?? []),
-        ],
-        max_tokens: 1024,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const json = await res.json().catch(() => null);
@@ -162,7 +172,15 @@ export async function POST(request: Request) {
       );
     }
 
-    reply = json?.choices?.[0]?.message?.content ?? "";
+    if (format === "anthropic") {
+      reply = (json?.content ?? [])
+        .filter((b: { type?: string }) => b.type === "text")
+        .map((b: { text?: string }) => b.text ?? "")
+        .join("");
+    } else {
+      reply = json?.choices?.[0]?.message?.content ?? "";
+    }
+
     if (!reply) {
       return NextResponse.json(
         { error: "The model returned an empty reply" },

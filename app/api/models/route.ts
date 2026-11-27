@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/crypto";
-import { modelsUrl } from "@/lib/providers";
+import { authHeaders, modelsUrl } from "@/lib/providers";
 
 // Models that can't chat, so we hide them from the list
 const SKIP = [
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
   try {
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: authHeaders(keyRow.provider, apiKey),
       signal: AbortSignal.timeout(15000),
     });
     const json = await res.json().catch(() => null);
