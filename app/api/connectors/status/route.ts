@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Composio } from "@composio/core";
 import { createClient } from "@/lib/supabase/server";
+import { CATALOG, authConfigsFor } from "@/lib/composio";
 
 export async function GET() {
   const supabase = await createClient();
@@ -21,8 +22,11 @@ export async function GET() {
 
   try {
     const composio = new Composio({ apiKey: process.env.COMPOSIO_API_KEY });
-    const session = await composio.create(user.id);
-    const result = await session.toolkits();
+    const session = await composio.create(user.id, {
+      toolkits: CATALOG,
+      authConfigs: authConfigsFor(CATALOG),
+    });
+    const result = await session.toolkits({ limit: 50 });
 
     const toolkits = result.items
       .filter((t) => !t.isNoAuth)

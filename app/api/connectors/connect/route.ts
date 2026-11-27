@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Composio } from "@composio/core";
 import { createClient } from "@/lib/supabase/server";
+import { CATALOG, authConfigsFor } from "@/lib/composio";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -20,13 +21,16 @@ export async function GET(request: Request) {
   }
 
   const toolkit = new URL(request.url).searchParams.get("toolkit");
-  if (!toolkit) {
-    return NextResponse.json({ error: "Missing toolkit" }, { status: 400 });
+  if (!toolkit || !CATALOG.includes(toolkit)) {
+    return NextResponse.json({ error: "Unknown app" }, { status: 400 });
   }
 
   try {
     const composio = new Composio({ apiKey: process.env.COMPOSIO_API_KEY });
-    const session = await composio.create(user.id, { toolkits: [toolkit] });
+    const session = await composio.create(user.id, {
+      toolkits: [toolkit],
+      authConfigs: authConfigsFor([toolkit]),
+    });
     const connection = await session.authorize(toolkit);
 
     if (!connection.redirectUrl) {
